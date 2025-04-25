@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "222457885673",
+    "project_id": "imitation-1e991",
+    "storage_bucket": "imitation-1e991.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:222457885673:android:7bcf42747c714b9c1d1178",
+        "android_client_info": {
+          "package_name": "com.julospace.imitation"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD4PV-BVi68FIj3nsSSb09F2PdvDpgBZNU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
