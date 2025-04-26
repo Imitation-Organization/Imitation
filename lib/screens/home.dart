@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:imitation/screens/phrases.dart';
+import 'package:imitation/screens/words.dart';
 
 class HomeScreen extends StatefulWidget {
 
@@ -86,7 +87,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
-              onTap: () {},
+              onTap: () {
+                Navigator.of(context).push(MaterialPageRoute(builder: (context) => WordsScreen(user: user,)));
+              },
             ),
             GestureDetector(
               child: Container(

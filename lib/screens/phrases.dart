@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_sound/flutter_sound.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 
 
@@ -37,10 +39,44 @@ class _PhrasesScreenState extends State<PhrasesScreen> {
 
   bool ready = false;
 
+  FlutterSoundRecorder recorder = FlutterSoundRecorder();
+
+  Future<void> openTheRecoreder() async {
+    var status = await Permission.microphone.request();
+    if (status != PermissionStatus.granted) {
+      throw RecordingPermissionException('Microphone permission not granted');
+    }
+    await recorder.openRecorder();
+  }
+
+  Codec codec = Codec.mp3;
+  String recorderPath = "record.mp3";
+
+  void record() {
+    recorder.startRecorder(
+      toFile: recorderPath,
+      codec: codec,
+      audioSource: AudioSource.microphone
+    ).then((value) {
+      setState(() {
+        
+      });
+    });
+  }
+  
+  void stopRecorder() async {
+    await recorder.startRecorder().then((value) {
+      setState(() {
+
+      });
+    });
+  }
+
   @override
   void initState() {
     super.initState();
     getPhrases();
+    openTheRecoreder();
   }
 
   void getPhrases() async {
@@ -180,7 +216,7 @@ class _PhrasesScreenState extends State<PhrasesScreen> {
                           height: height * 0.15,
                           padding: EdgeInsets.only(left: width * 0.05, right: width * 0.05, top: height * 0.02, bottom: height * 0.02),
                           child: Center(
-                            child: Text(isTranslate ? themePhrases[phraseIndex].translate : themePhrases[phraseIndex].text, style: TextStyle(fontFamily: "nokia", color: Colors.white,), textAlign: TextAlign.center,),
+                            child: Text(isTranslate ? themePhrases[phraseIndex].translate : themePhrases[phraseIndex].text, style: GoogleFonts.roboto(color: Colors.white, fontSize: width * 0.06, fontWeight: FontWeight.w500), textAlign: TextAlign.center,),
                           ),
                           decoration: BoxDecoration(
                               border: Border.all(color: Colors.white, width: 1),
@@ -252,8 +288,10 @@ class _PhrasesScreenState extends State<PhrasesScreen> {
                         ),
                         Container(
                           child: IconButton(
-                            icon: Icon(isRecording ? Icons.mic_off_outlined : Icons.mic_none, color: Colors.white, size: width * 0.2,),
-                            onPressed: () {},
+                            icon: Icon(recorder.isRecording ? Icons.mic_off_outlined : Icons.mic_none, color: Colors.white, size: width * 0.2,),
+                            onPressed: () {
+                              recorder.isRecording ? stopRecorder() : record();
+                            },
                           ),
                         )
                       ],
