@@ -1,20 +1,26 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:io';
-
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:imitation/screens/phrases.dart';
 
 class HomeScreen extends StatefulWidget {
 
+  final User user;
+
+  HomeScreen({required this.user});
 
   @override
-  _HomeScreenState createState() => _HomeScreenState();
+  _HomeScreenState createState() => _HomeScreenState(user: user);
 }
 
 
 class _HomeScreenState extends State<HomeScreen> {
+
+  final User user;
+
+  _HomeScreenState({required this.user});
 
 
   @override
@@ -110,7 +116,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
-              onTap: () {},
+              onTap: () {
+                Navigator.of(context).push(MaterialPageRoute(builder: (context) => PhrasesScreen(user: user,)));
+              },
             ),
             GestureDetector(
               child: Container(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:imitation/screens/home.dart';
+import 'package:imitation/screens/login.dart';
 
 
 class SplashScreen extends StatefulWidget {
@@ -53,7 +54,7 @@ class _SplashScreenState extends State<SplashScreen> {
                     child: ElevatedButton(
                       child: Text('Начать', style: GoogleFonts.instrumentSans(fontSize: width * 0.05, color: Colors.white),),
                       onPressed: () {
-                        Navigator.of(context).push(MaterialPageRoute(builder: (context) => HomeScreen()));
+                        Navigator.of(context).push(MaterialPageRoute(builder: (context) => LoginScreen()));
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Color(0xFFFF962D),
