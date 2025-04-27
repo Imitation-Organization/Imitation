@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -8,6 +9,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:typed_data';
 import 'dart:convert';
+import 'dart:async';
 
 
 class PhrasesScreen extends StatefulWidget {
@@ -45,15 +47,24 @@ class _PhrasesScreenState extends State<PhrasesScreen> {
   String recognize = "";
 
   FlutterSoundRecorder recorder = FlutterSoundRecorder();
+  final player = AudioPlayer();
 
-  Codec codec = Codec.aacMP4;
+  int kSAMPLERATE = 16000;
+  int kNUMBEROFCHANNELS = 1;
+
+  Codec codec = Codec.pcm16;
   String recorderPath = "";
 
   List<int> toIntList(Uint8List source) {
     return List.from(source);
   }
 
+
   List<(String, bool)>? words;
+
+  var recordingDataControllerUint8 = StreamController<Uint8List>();
+  StreamSubscription? streamSubscription;
+  StreamSubscription? socketSubscription;
 
   void checkPhrase() async {
     String recognizeCopy = recognize.toLowerCase();
@@ -86,7 +97,6 @@ class _PhrasesScreenState extends State<PhrasesScreen> {
     if (word != '') {
       referenceWords.add(word.replaceAll(' ', ''));
     }
-    print(referenceWords);
     int rightCount = 0;
     List<(String, bool)> wordsCopy = List.filled(recognizeWords.length, ('', false));
     bool isVariation = false;
@@ -120,61 +130,74 @@ class _PhrasesScreenState extends State<PhrasesScreen> {
     await FirebaseFirestore.instance.collection('users').doc(user.uid).collection("phrases").doc(themePhrases[phraseIndex].text).set({
       'isComplete': true
     });
+    await player.play(AssetSource("correct.mp3"), volume: 100.0);
   }
 
-  Future<void> sendAudio() async {
-    var tempDir = await getTemporaryDirectory();
-    Socket socket = await Socket.connect('37.252.21.214', 80);
-    File file = File("${tempDir.path}/audio.aac");
-    print(tempDir);
-    List<int> fileBytes = await file.readAsBytes();
-    print(fileBytes.length);
-    int chunkSize = 1024;
-    for (int i = 0; i < fileBytes.length; i += chunkSize) {
-      int end = (i + chunkSize < fileBytes.length) ? i + chunkSize : fileBytes
-          .length;
-      List<int> chunk = fileBytes.sublist(i, end);
-      socket.add(chunk);
-    }
-    socket.listen((data) async {
-      setState(() {
-        recognize = utf8.decode(data);
-      });
-      checkPhrase();
-    });
-    socket.close();
-  }
+  Socket? socket;
 
+  bool isMic = false;
 
   Future<void> openTheRecoreder() async {
-    var tempDir = await getTemporaryDirectory();
-    recorderPath = '${tempDir.path}/audio.aac';
     var status = await Permission.microphone.request();
     if (status != PermissionStatus.granted) {
       throw RecordingPermissionException('Microphone permission not granted');
     }
     await recorder.openRecorder();
+    await recorder.setSubscriptionDuration(Duration(milliseconds: 40));
   }
 
-  void record() {
+  void record() async {
+
+    socket = await Socket.connect('37.252.21.214', 80);
+
+    recordingDataControllerUint8 = StreamController<Uint8List>();
+
+    streamSubscription = recordingDataControllerUint8.stream.listen((data) {
+      socket!.add(data);
+      setState(() {
+
+      });
+    });
+
     recorder.startRecorder(
-      toFile: recorderPath,
       codec: codec,
-      audioSource: AudioSource.defaultSource
-    ).then((value) {
-      setState(() {
-        
-      });
-    });
+      toStream: recordingDataControllerUint8.sink,
+      audioSource: AudioSource.defaultSource,
+      sampleRate: kSAMPLERATE,
+      numChannels: kNUMBEROFCHANNELS,
+      bufferSize: 1024
+    );
   }
-  
-  void stopRecorder() async {
-    await recorder.stopRecorder().then((value) {
-      sendAudio();
-      setState(() {
 
+  void stopRecorder() async {
+    try {
+      await streamSubscription!.cancel();
+      streamSubscription = null;
+      await recorder.stopRecorder();
+      socketSubscription = socket!.listen((data) async {
+        setState(() {
+          recognize = utf8.decode(data);
+        });
+        checkPhrase();
       });
-    });
+    } catch (e) {
+
+    } finally {
+      await socket!.close();
+      socket = null;
+    }
+  }
+
+  void micOn() async {
+    await player.play(AssetSource("mic_on.mp3"), volume: 100.0);
+  }
+
+  void micOff() async {
+    await player.play(AssetSource("mic_off.mp3"), volume: 100.0);
+  }
+
+  void playReference() async {
+    await player.play(BytesSource(themePhrases[phraseIndex].audioBytes!));
   }
 
   @override
@@ -211,7 +234,19 @@ class _PhrasesScreenState extends State<PhrasesScreen> {
         variations.add(variationsD[j].toString());
       }
       Phrase ph = Phrase(text: phrase.id, theme: theme, translate: translate, variations: variations, isComplete: isComplete);
+      try {
+        final audioData = phrase.data()['audio']['data'] as String?;
+        final bytes = base64Decode(audioData!);
+        ph.audioBytes = bytes;
+      } catch (e) {
+
+      }
       allPhrases[theme]!.add(ph);
+    }
+    for (int i = 0; i < allPhrases.length; i++) {
+      if (firstIndex[allPhrases.keys.elementAt(i)] == -1) {
+        firstIndex[allPhrases.keys.elementAt(i)] = 0;
+      }
     }
     currentTheme = allPhrases.keys.first;
     themePhrases = allPhrases[currentTheme]!;
@@ -219,6 +254,7 @@ class _PhrasesScreenState extends State<PhrasesScreen> {
       ready = true;
     });
   }
+
 
   Widget build(BuildContext context) {
     double height = MediaQuery.of(context).size.height;
@@ -375,8 +411,7 @@ class _PhrasesScreenState extends State<PhrasesScreen> {
                           child: IconButton(
                             icon: Icon(Icons.volume_up, color: Colors.white, size: width * 0.1,),
                             onPressed: () {
-                              setState(() {
-                              });
+                              playReference();
                             },
                           ),
                         ),
@@ -439,14 +474,29 @@ class _PhrasesScreenState extends State<PhrasesScreen> {
                   ) : Container(),
                   themePhrases[phraseIndex].isComplete ? Text("Верно!", style: TextStyle(fontFamily: "nokia", fontSize: width * 0.07, color: Colors.white,))
                       : Container(),
-                  !themePhrases[phraseIndex].isComplete ? Container(
-                    margin: EdgeInsets.only(top: height * 0.02),
-                    child: IconButton(
-                      icon: Icon(recorder.isRecording ? Icons.mic_off_outlined : Icons.mic_none, color: Colors.white, size: width * 0.2,),
-                      onPressed: () {
-                        recorder.isRecording ? stopRecorder() : record();
-                      },
+                  !themePhrases[phraseIndex].isComplete ? GestureDetector(
+                    child: Container(
+                      margin: EdgeInsets.only(top: height * 0.02),
+                      child: Icon(isMic ? Icons.mic_off_outlined : Icons.mic_none, color: isMic ? Color(0xFFE26196) : Colors.white, size: width * 0.2,),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isMic ? Colors.white : Colors.transparent
+                      ),
                     ),
+                    onLongPress: () {
+                      micOn();
+                      setState(() {
+                        isMic = true;
+                      });
+                      record();
+                    },
+                    onLongPressEnd: (_) {
+                      micOff();
+                      setState(() {
+                        isMic = false;
+                      });
+                      stopRecorder();
+                    },
                   ) : Container()
                 ],
               ),
@@ -545,5 +595,6 @@ class Phrase {
   String translate;
   List<String> variations;
   bool isComplete;
+  Uint8List? audioBytes;
   Phrase({required this.text, required this.theme, required this.translate, required this.variations, required this.isComplete});
 }

@@ -43,6 +43,7 @@ dependencies:
   permission_handler: ^12.0.0+1
   path_provider: ^2.1.5
   flutter_launcher_icons: ^0.14.3
+  audioplayers: ^6.4.0
 
 dev_dependencies:
   flutter_test:
@@ -73,6 +74,10 @@ flutter:
     - assets/bot.png
     - assets/login.svg
     - assets/imitation-logotype.png
+    - assets/mic_on.mp3
+    - assets/mic_off.mp3
+    - assets/correct.mp3
+    - assets/background.mp3
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
