@@ -1,10 +1,13 @@
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:permission_handler/permission_handler.dart';
-
+import 'package:path_provider/path_provider.dart';
+import 'dart:typed_data';
+import 'dart:convert';
 
 
 class PhrasesScreen extends StatefulWidget {
@@ -39,9 +42,113 @@ class _PhrasesScreenState extends State<PhrasesScreen> {
 
   bool ready = false;
 
+  String recognize = "";
+
   FlutterSoundRecorder recorder = FlutterSoundRecorder();
 
+  Codec codec = Codec.aacMP4;
+  String recorderPath = "";
+
+  List<int> toIntList(Uint8List source) {
+    return List.from(source);
+  }
+
+  List<(String, bool)>? words;
+
+  void checkPhrase() async {
+    String recognizeCopy = recognize.toLowerCase();
+    recognizeCopy = recognizeCopy.replaceAll(RegExp(r'[^\p{L}\p{M}\p{N}\s]+', unicode: true), '');
+    String reference = themePhrases[phraseIndex].text.toLowerCase();
+    reference = reference.replaceAll(RegExp(r'[^\p{L}\p{M}\p{N}\s]+', unicode: true), '');
+    List<String> referenceWords = [];
+    List<String> recognizeWords = [];
+    String word = '';
+    for (int i = 0; i < recognizeCopy.length; i++) {
+      if (recognizeCopy[i] != ' ') {
+        word += recognizeCopy[i];
+      } else {
+        recognizeWords.add(word.replaceAll(' ', ''));
+        word = '';
+      }
+    }
+    if (word != '') {
+      recognizeWords.add(word.replaceAll(' ', ''));
+    }
+    word = ' ';
+    for (int i = 0; i < reference.length; i++) {
+      if (reference[i] != ' ') {
+        word += reference[i];
+      } else {
+        referenceWords.add(word.replaceAll(' ', ''));
+        word = '';
+      }
+    }
+    if (word != '') {
+      referenceWords.add(word.replaceAll(' ', ''));
+    }
+    print(referenceWords);
+    int rightCount = 0;
+    List<(String, bool)> wordsCopy = List.filled(recognizeWords.length, ('', false));
+    bool isVariation = false;
+    for (String variation in themePhrases[phraseIndex].variations) {
+      if (recognizeCopy.contains(reference)) {
+        isVariation = true;
+        break;
+      }
+    }
+    for (int i = 0; i < recognizeWords.length; i++) {
+      wordsCopy[i] = (recognizeWords[i], isVariation ? true : false);
+    }
+    for (String word in referenceWords) {
+      if (recognizeWords.contains(word)) {
+        rightCount++;
+        wordsCopy[recognizeWords.indexOf(word)] = (word, true);
+      }
+    }
+    setState(() {
+      words = wordsCopy;
+    });
+    if (rightCount == referenceWords.length) {
+      correctAnswer();
+    }
+  }
+
+  void correctAnswer() async {
+    allPhrases[currentTheme]![phraseIndex].isComplete = true;
+    themePhrases[phraseIndex].isComplete = true;
+    rightPhrases[currentTheme!] = rightPhrases[currentTheme!]! + 1;
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).collection("phrases").doc(themePhrases[phraseIndex].text).set({
+      'isComplete': true
+    });
+  }
+
+  Future<void> sendAudio() async {
+    var tempDir = await getTemporaryDirectory();
+    Socket socket = await Socket.connect('37.252.21.214', 80);
+    File file = File("${tempDir.path}/audio.aac");
+    print(tempDir);
+    List<int> fileBytes = await file.readAsBytes();
+    print(fileBytes.length);
+    int chunkSize = 1024;
+    for (int i = 0; i < fileBytes.length; i += chunkSize) {
+      int end = (i + chunkSize < fileBytes.length) ? i + chunkSize : fileBytes
+          .length;
+      List<int> chunk = fileBytes.sublist(i, end);
+      socket.add(chunk);
+    }
+    socket.listen((data) async {
+      setState(() {
+        recognize = utf8.decode(data);
+      });
+      checkPhrase();
+    });
+    socket.close();
+  }
+
+
   Future<void> openTheRecoreder() async {
+    var tempDir = await getTemporaryDirectory();
+    recorderPath = '${tempDir.path}/audio.aac';
     var status = await Permission.microphone.request();
     if (status != PermissionStatus.granted) {
       throw RecordingPermissionException('Microphone permission not granted');
@@ -49,14 +156,11 @@ class _PhrasesScreenState extends State<PhrasesScreen> {
     await recorder.openRecorder();
   }
 
-  Codec codec = Codec.mp3;
-  String recorderPath = "record.mp3";
-
   void record() {
     recorder.startRecorder(
       toFile: recorderPath,
       codec: codec,
-      audioSource: AudioSource.microphone
+      audioSource: AudioSource.defaultSource
     ).then((value) {
       setState(() {
         
@@ -65,7 +169,8 @@ class _PhrasesScreenState extends State<PhrasesScreen> {
   }
   
   void stopRecorder() async {
-    await recorder.startRecorder().then((value) {
+    await recorder.stopRecorder().then((value) {
+      sendAudio();
       setState(() {
 
       });
@@ -207,6 +312,8 @@ class _PhrasesScreenState extends State<PhrasesScreen> {
                             if (phraseIndex > 0) {
                               setState(() {
                                 phraseIndex--;
+                                recognize = '';
+                                words = [];
                               });
                             }
                           },
@@ -214,9 +321,9 @@ class _PhrasesScreenState extends State<PhrasesScreen> {
                         Container(
                           width: width * 0.65,
                           height: height * 0.15,
-                          padding: EdgeInsets.only(left: width * 0.05, right: width * 0.05, top: height * 0.02, bottom: height * 0.02),
+                          padding: EdgeInsets.only(left: width * 0.04, right: width * 0.04, top: height * 0.01, bottom: height * 0.02),
                           child: Center(
-                            child: Text(isTranslate ? themePhrases[phraseIndex].translate : themePhrases[phraseIndex].text, style: GoogleFonts.roboto(color: Colors.white, fontSize: width * 0.06, fontWeight: FontWeight.w500), textAlign: TextAlign.center,),
+                            child: Text(isTranslate ? themePhrases[phraseIndex].translate : themePhrases[phraseIndex].text, style: GoogleFonts.roboto(color: Colors.white, fontSize: width * 0.05, fontWeight: FontWeight.w500), textAlign: TextAlign.center,),
                           ),
                           decoration: BoxDecoration(
                               border: Border.all(color: Colors.white, width: 1),
@@ -229,6 +336,8 @@ class _PhrasesScreenState extends State<PhrasesScreen> {
                             if (phraseIndex < themePhrases.length - 1) {
                               setState(() {
                                 phraseIndex++;
+                                recognize = '';
+                                words = [];
                               });
                             }
                           },
@@ -279,21 +388,22 @@ class _PhrasesScreenState extends State<PhrasesScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Container(
-                          width: width * 0.6,
+                          width: width * 0.8,
                           height: height * 0.2,
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(26)
                           ),
+                          padding: EdgeInsets.only(left: width * 0.05, right: width * 0.05, top: height * 0.02),
+                          child: recognize != '' ? RichText(
+                            text: TextSpan(
+                                children: List.generate(words!.length, (index) => TextSpan(
+                                    text: words![index].$1 + (index < words!.length - 1 ? ' ' : ''),
+                                    style: GoogleFonts.roboto(color: words![index].$2 ? Colors.green : Colors.red, fontSize: width * 0.06, fontWeight: FontWeight.w400)
+                                ))
+                            ),
+                          ) : Container()
                         ),
-                        Container(
-                          child: IconButton(
-                            icon: Icon(recorder.isRecording ? Icons.mic_off_outlined : Icons.mic_none, color: Colors.white, size: width * 0.2,),
-                            onPressed: () {
-                              recorder.isRecording ? stopRecorder() : record();
-                            },
-                          ),
-                        )
                       ],
                     ),
                   ),
@@ -317,7 +427,7 @@ class _PhrasesScreenState extends State<PhrasesScreen> {
                           ),
                         ),
                         Container(
-                          child: Text('${(rightPhrases[currentTheme]!.toDouble() / themePhrases.length.toDouble()).toInt()}%', style: TextStyle(fontFamily: "nokia", fontSize: width * 0.06, color: Color(0xFF400093)),),
+                          child: Text('${(rightPhrases[currentTheme]!.toDouble() / themePhrases.length.toDouble()).toInt() * 100}%', style: TextStyle(fontFamily: "nokia", fontSize: width * 0.06, color: Color(0xFF400093)),),
                           alignment: Alignment.centerRight,
                           margin: EdgeInsets.only(right: width * 0.05),
                         )
@@ -329,6 +439,15 @@ class _PhrasesScreenState extends State<PhrasesScreen> {
                   ) : Container(),
                   themePhrases[phraseIndex].isComplete ? Text("Верно!", style: TextStyle(fontFamily: "nokia", fontSize: width * 0.07, color: Colors.white,))
                       : Container(),
+                  !themePhrases[phraseIndex].isComplete ? Container(
+                    margin: EdgeInsets.only(top: height * 0.02),
+                    child: IconButton(
+                      icon: Icon(recorder.isRecording ? Icons.mic_off_outlined : Icons.mic_none, color: Colors.white, size: width * 0.2,),
+                      onPressed: () {
+                        recorder.isRecording ? stopRecorder() : record();
+                      },
+                    ),
+                  ) : Container()
                 ],
               ),
             ),
@@ -384,7 +503,7 @@ class _PhrasesScreenState extends State<PhrasesScreen> {
                       child: Container(
                         height: height * 0.08,
                         child: Center(
-                          child: Text(themePhrases[index].text, style: GoogleFonts.roboto(fontSize: width * 0.04, color: Colors.black), textAlign: TextAlign.center,),
+                          child: Text(themePhrases[index].text, style: GoogleFonts.roboto(fontSize: width * 0.04, color: themePhrases[index].isComplete ? Colors.green : Colors.red), textAlign: TextAlign.center,),
                         ),
                         decoration: BoxDecoration(
                             border: Border(bottom: BorderSide(width: 1, color: Colors.grey))

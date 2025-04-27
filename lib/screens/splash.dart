@@ -3,17 +3,27 @@ import 'package:flutter_svg/svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:imitation/screens/home.dart';
 import 'package:imitation/screens/login.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+
 
 
 class SplashScreen extends StatefulWidget {
 
+  User? user;
+
+  SplashScreen({required this.user});
 
   @override
-  _SplashScreenState createState() => _SplashScreenState();
+  _SplashScreenState createState() => _SplashScreenState(user: user);
 }
 
 
 class _SplashScreenState extends State<SplashScreen> {
+
+  User? user;
+
+  _SplashScreenState({required this.user});
 
   Widget build(BuildContext context) {
     double height = MediaQuery.of(context).size.height;
@@ -54,7 +64,7 @@ class _SplashScreenState extends State<SplashScreen> {
                     child: ElevatedButton(
                       child: Text('Начать', style: GoogleFonts.instrumentSans(fontSize: width * 0.05, color: Colors.white),),
                       onPressed: () {
-                        Navigator.of(context).push(MaterialPageRoute(builder: (context) => LoginScreen()));
+                        Navigator.of(context).push(MaterialPageRoute(builder: (context) => user != null ? HomeScreen(user: user!) : LoginScreen()));
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Color(0xFFFF962D),
