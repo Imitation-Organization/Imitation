@@ -11,11 +11,6 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
 
-  AudioPlayer player = AudioPlayer();
-
-  player.setReleaseMode(ReleaseMode.loop);
-  await player.play(AssetSource("background.mp3"), volume: 5);
-
   FirebaseAuth.instance.authStateChanges().listen((User? user) {
     runApp(
         MaterialApp(

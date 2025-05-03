@@ -3,8 +3,12 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:imitation/screens/login.dart';
 import 'package:imitation/screens/phrases.dart';
 import 'package:imitation/screens/words.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:audioplayers/audioplayers.dart';
+
 
 class HomeScreen extends StatefulWidget {
 
@@ -19,22 +23,30 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
 
+
+  AudioPlayer player = AudioPlayer();
+
   final User user;
 
   _HomeScreenState({required this.user});
 
-
   @override
   void initState() {
     super.initState();
-    func();
+    player.setReleaseMode(ReleaseMode.loop);
+    player.play(AssetSource("background.mp3"), volume: 5);
   }
 
-  void func() async {
-    Socket socket;
-    Socket.connect("192.168.31.159", 80).then((Socket sock) {
-      sock.add(utf8.encode("Hello"));
-    });
+  @override
+  void dispose() {
+    super.dispose();
+    player.dispose();
+  }
+
+
+  void resetProgress() async {
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).delete();
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Прогресс сброшен')));
   }
 
   Widget build(BuildContext context) {
@@ -58,11 +70,74 @@ class _HomeScreenState extends State<HomeScreen> {
             )
         ),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            SafeArea(
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: width * 0.05,
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.logout, color: Colors.white, size: width * 0.1,),
+                    onPressed: () {
+                      showDialog(
+                          context: context,
+                          builder: (BuildContext dialogContext) => AlertDialog(
+                            title: const Text('Выйти из аккаунта?'),
+                            actions: [
+                              TextButton(
+                                child: Text('Нет'),
+                                onPressed: () {
+                                  Navigator.pop(dialogContext);
+                                },
+                              ),
+                              TextButton(
+                                child: Text('Да'),
+                                onPressed: () {
+                                  FirebaseAuth.instance.signOut().then((_) => {
+                                    Navigator.of(context).push(MaterialPageRoute(builder: (context) => LoginScreen()))
+                                  });
+                                },
+                              ),
+                            ],
+                          )
+                      );
+                    },
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.refresh, color: Colors.white, size: width * 0.1,),
+                    onPressed: () {
+                      showDialog(
+                          context: context,
+                          builder: (BuildContext dialogContext) => AlertDialog(
+                            title: const Text('Сбросить прогресс?'),
+                            actions: [
+                              TextButton(
+                                child: Text('Нет'),
+                                onPressed: () {
+                                  Navigator.pop(dialogContext);
+                                },
+                              ),
+                              TextButton(
+                                child: Text('Да'),
+                                onPressed: () {
+                                  resetProgress();
+                                  Navigator.pop(dialogContext);
+                                },
+                              ),
+                            ],
+                          )
+                      );
+                    },
+                  ),
+                ],
+              )
+            ),
             GestureDetector(
               child: Container(
                 width: width * 0.8,
-                margin: EdgeInsets.only(top: height * 0.06),
+                margin: EdgeInsets.only(left: width * 0.1),
                 child: Column(
                   children: [
                     Container(
@@ -94,7 +169,7 @@ class _HomeScreenState extends State<HomeScreen> {
             GestureDetector(
               child: Container(
                 width: width * 0.8,
-                margin: EdgeInsets.only(top: height * 0.05),
+                margin: EdgeInsets.only(top: height * 0.03, left: width * 0.1),
                 child: Column(
                   children: [
                     Container(
@@ -126,7 +201,7 @@ class _HomeScreenState extends State<HomeScreen> {
             GestureDetector(
               child: Container(
                 width: width * 0.8,
-                margin: EdgeInsets.only(top: height * 0.05),
+                margin: EdgeInsets.only(top: height * 0.03, left: width * 0.1),
                 child: Column(
                   children: [
                     Container(

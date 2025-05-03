@@ -120,6 +120,8 @@ class _WordsScreenState extends State<WordsScreen> {
     });
     if (rightCount == referenceWords.length) {
       correctAnswer();
+    } else {
+      await player.play(AssetSource("wrong.mp3"), volume: 100.0);
     }
   }
 
@@ -346,6 +348,7 @@ class _WordsScreenState extends State<WordsScreen> {
                             icon: Icon(Icons.arrow_back_ios, color: wordIndex > 0 ? Colors.white : Colors.transparent, size: width * 0.1,),
                             onPressed: () {
                               if (wordIndex > 0) {
+                                player.play(AssetSource("new.mp3"), volume: 100.0);
                                 setState(() {
                                   wordIndex--;
                                   recognize = '';
@@ -370,6 +373,7 @@ class _WordsScreenState extends State<WordsScreen> {
                             icon: Icon(Icons.arrow_forward_ios, color: wordIndex < themewords.length - 1 ? Colors.white : Colors.transparent, size: width * 0.1),
                             onPressed: () {
                               if (wordIndex < themewords.length - 1) {
+                                player.play(AssetSource("new.mp3"), volume: 100.0);
                                 setState(() {
                                   wordIndex++;
                                   recognize = '';
