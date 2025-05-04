@@ -80,6 +80,7 @@ flutter:
     - assets/wrong.mp3
     - assets/new.mp3
     - assets/background.mp3
+    - assets/click.mp3
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

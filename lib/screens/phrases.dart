@@ -150,6 +150,10 @@ class _PhrasesScreenState extends State<PhrasesScreen> {
 
   void record() async {
 
+    setState(() {
+      recognize = "";
+    });
+
     socket = await Socket.connect('37.252.21.214', 80);
 
     recordingDataControllerUint8 = StreamController<Uint8List>();
@@ -258,6 +262,14 @@ class _PhrasesScreenState extends State<PhrasesScreen> {
   }
 
 
+  void resetTheme() async {
+    for (Phrase phrase in themePhrases) {
+      await FirebaseFirestore.instance.collection('phrases').doc(phrase.text).delete();
+    }
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Тема сброшена')));
+  }
+
+
   Widget build(BuildContext context) {
     double height = MediaQuery.of(context).size.height;
     double width = MediaQuery.of(context).size.width;
@@ -292,6 +304,7 @@ class _PhrasesScreenState extends State<PhrasesScreen> {
                           child: IconButton(
                             icon: Icon(Icons.arrow_back, color: Colors.white, size: width * 0.1,),
                             onPressed: () {
+                              player.play(AssetSource("click.mp3"), volume: 5);
                               Navigator.of(context).pop();
                             },
                           ),
@@ -335,6 +348,34 @@ class _PhrasesScreenState extends State<PhrasesScreen> {
                                 padding: EdgeInsets.only(left: 20, right: 20, top: 8, bottom: 8)
                             ),
                           ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.refresh, size: width * 0.1, color: Colors.white,),
+                          onPressed: () {
+                            showDialog(
+                                context: context,
+                                builder: (BuildContext dialogContext) => AlertDialog(
+                                  title: const Text('Сбросить прогресс?'),
+                                  actions: [
+                                    TextButton(
+                                      child: Text('Нет'),
+                                      onPressed: () {
+                                        player.play(AssetSource("click.mp3"), volume: 5);
+                                        Navigator.pop(dialogContext);
+                                      },
+                                    ),
+                                    TextButton(
+                                      child: Text('Да'),
+                                      onPressed: () {
+                                        player.play(AssetSource("click.mp3"), volume: 5);
+                                        resetTheme();
+                                        Navigator.pop(dialogContext);
+                                      },
+                                    ),
+                                  ],
+                                )
+                            );
+                          },
                         )
                       ],
                     ),

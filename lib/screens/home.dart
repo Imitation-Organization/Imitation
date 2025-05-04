@@ -23,7 +23,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
 
-
   AudioPlayer player = AudioPlayer();
 
   final User user;
@@ -33,14 +32,11 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    player.setReleaseMode(ReleaseMode.loop);
-    player.play(AssetSource("background.mp3"), volume: 5);
   }
 
   @override
   void dispose() {
     super.dispose();
-    player.dispose();
   }
 
 
@@ -89,12 +85,14 @@ class _HomeScreenState extends State<HomeScreen> {
                               TextButton(
                                 child: Text('Нет'),
                                 onPressed: () {
+                                  player.play(AssetSource("click.mp3"), volume: 5);
                                   Navigator.pop(dialogContext);
                                 },
                               ),
                               TextButton(
                                 child: Text('Да'),
                                 onPressed: () {
+                                  player.play(AssetSource("click.mp3"), volume: 5);
                                   FirebaseAuth.instance.signOut().then((_) => {
                                     Navigator.of(context).push(MaterialPageRoute(builder: (context) => LoginScreen()))
                                   });
@@ -116,12 +114,14 @@ class _HomeScreenState extends State<HomeScreen> {
                               TextButton(
                                 child: Text('Нет'),
                                 onPressed: () {
+                                  player.play(AssetSource("click.mp3"), volume: 5);
                                   Navigator.pop(dialogContext);
                                 },
                               ),
                               TextButton(
                                 child: Text('Да'),
                                 onPressed: () {
+                                  player.play(AssetSource("click.mp3"), volume: 5);
                                   resetProgress();
                                   Navigator.pop(dialogContext);
                                 },
@@ -163,6 +163,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               onTap: () {
+                player.play(AssetSource("click.mp3"), volume: 5);
                 Navigator.of(context).push(MaterialPageRoute(builder: (context) => WordsScreen(user: user,)));
               },
             ),
@@ -195,6 +196,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               onTap: () {
+                player.play(AssetSource("click.mp3"), volume: 5);
                 Navigator.of(context).push(MaterialPageRoute(builder: (context) => PhrasesScreen(user: user,)));
               },
             ),
@@ -230,7 +232,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
-              onTap: () {},
+              onTap: () {
+                player.play(AssetSource("click.mp3"), volume: 5);
+              },
             ),
           ],
         ),
